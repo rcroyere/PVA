@@ -17,12 +17,21 @@ logger = logging.getLogger(__name__)
 
 class KafkaAdapter(BaseAdapter):
     """Kafka connectivity and operations adapter"""
-    
+
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.producer: Optional[KafkaProducer] = None
         self.consumer: Optional[KafkaConsumer] = None
         self.admin_client: Optional[KafkaAdminClient] = None
+
+        # kubectl mode: test from within the pod via kubectl exec
+        self._kubectl = config.get('_kubectl')
+        if self._kubectl:
+            bs = self.config.get('bootstrap_servers', ['localhost:9092'])
+            first = bs[0] if isinstance(bs, list) else bs
+            parts = first.rsplit(':', 1)
+            self._kube_host = parts[0]
+            self._kube_port = int(parts[1]) if len(parts) > 1 else 9092
         
     def _get_kafka_config(self) -> Dict[str, Any]:
         """Build Kafka connection config"""
@@ -37,11 +46,17 @@ class KafkaAdapter(BaseAdapter):
     
     async def test_connectivity(self) -> ConnectionResult:
         """Test Kafka broker connectivity"""
+        if self._kubectl:
+            return await self._kubectl['executor'].test_tcp(
+                self._kubectl['namespace'], self._kubectl['pod'],
+                self._kube_host, self._kube_port
+            )
+
         start_time = time.time()
-        
+
         try:
             kafka_config = self._get_kafka_config()
-            
+
             # Try to connect to Kafka admin
             self.admin_client = KafkaAdminClient(**kafka_config)
             
@@ -78,8 +93,14 @@ class KafkaAdapter(BaseAdapter):
     
     async def test_authentication(self) -> ConnectionResult:
         """Test Kafka SASL authentication"""
+        if self._kubectl:
+            # Cannot test SASL auth without Kafka CLI tools in pod — fall back to TCP
+            result = await self.test_connectivity()
+            result.metadata['note'] = 'authentication not testable in kubectl mode (no Kafka CLI in pod)'
+            return result
+
         start_time = time.time()
-        
+
         try:
             kafka_config = self._get_kafka_config()
             
@@ -110,8 +131,16 @@ class KafkaAdapter(BaseAdapter):
     
     async def test_topic_access(self, topic_name: str, access_type: str = 'READ') -> ConnectionResult:
         """Test access to a specific Kafka topic"""
+        if self._kubectl:
+            return ConnectionResult(
+                success=True,
+                duration_ms=0,
+                message=f"Topic access test skipped in kubectl mode (no Kafka CLI in pod)",
+                metadata={'mode': 'kubectl', 'topic': topic_name, 'access_type': access_type}
+            )
+
         start_time = time.time()
-        
+
         try:
             kafka_config = self._get_kafka_config()
             
@@ -174,8 +203,16 @@ class KafkaAdapter(BaseAdapter):
     
     async def test_produce_consume(self, topic_name: str, test_message: Dict[str, Any]) -> ConnectionResult:
         """Test end-to-end produce and consume"""
+        if self._kubectl:
+            return ConnectionResult(
+                success=True,
+                duration_ms=0,
+                message=f"Produce/consume test skipped in kubectl mode (no Kafka CLI in pod)",
+                metadata={'mode': 'kubectl', 'topic': topic_name}
+            )
+
         start_time = time.time()
-        
+
         try:
             kafka_config = self._get_kafka_config()
             

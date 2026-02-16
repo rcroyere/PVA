@@ -48,7 +48,7 @@ python main.py list-services --env dev
 ### Exécuter tous les tests en DEV
 
 ```bash
-python main.py --env dev --all --report-format html
+python main.py run --env dev --all --report-format html
 ```
 
 ou avec Make:
@@ -60,7 +60,7 @@ make run-dev
 ### Exécuter les tests pour un service spécifique
 
 ```bash
-python main.py --env dev --service pso-out-mapping --report-format html
+python main.py run --env dev --service pso-out-mapping --report-format html
 ```
 
 ou avec Make:
@@ -69,31 +69,74 @@ ou avec Make:
 make run-service ENV=dev SERVICE=pso-out-mapping
 ```
 
-### Exécuter les tests par catégorie
+### Exécuter les tests par domaine
+
+```bash
+# Tous les services CFK (Connecteur Framework)
+python main.py run --env dev --category cfk
+
+# Tous les services Core API
+python main.py run --env dev --category core
+```
+
+### Exécuter les tests par protocole
 
 ```bash
 # Tests Kafka uniquement
-python main.py --env dev --category kafka
+python main.py run --env dev --category kafka
 
 # Tests RabbitMQ uniquement
-python main.py --env dev --category rabbitmq
+python main.py run --env dev --category rabbitmq
 
 # Tests Database uniquement
-python main.py --env dev --category database
+python main.py run --env dev --category database
 ```
 
 ### Générer différents formats de rapports
 
 ```bash
 # Rapport HTML (par défaut)
-python main.py --env dev --all --report-format html
+python main.py run --env dev --all --report-format html
 
 # Rapport JSON
-python main.py --env dev --all --report-format json
+python main.py run --env dev --all --report-format json
 
 # Rapport JUnit (pour CI/CD)
-python main.py --env dev --all --report-format junit
+python main.py run --env dev --all --report-format junit
 ```
+
+## Mode kubectl (Tests Intra-Cluster)
+
+Le mode `kubectl` exécute les tests **depuis l'intérieur des pods** via `kubectl exec`, reflétant la vraie connectivité intra-cluster (NetworkPolicies, DNS interne, mTLS).
+
+### Prérequis
+
+- `kubectl` installé et configuré avec accès au cluster cible
+- Un contexte kubectl actif pointant sur le bon cluster
+
+```bash
+# Vérifier l'accès au cluster
+kubectl get pods -n cfk-out -l app=pso-out-mapping
+```
+
+### Utilisation
+
+```bash
+# Tester un service depuis son pod
+python main.py run --env dev --service pso-out-mapping --mode kubectl
+
+# Tester tous les services depuis leurs pods respectifs
+python main.py run --env dev --all --mode kubectl --report-format html
+
+# Comparer direct vs kubectl sur un service
+python main.py run --env dev --service core-api --mode direct
+python main.py run --env dev --service core-api --mode kubectl
+```
+
+**Comportement en mode kubectl :**
+- TCP (Kafka, PostgreSQL, RabbitMQ, SFTP) → `bash -c "echo >/dev/tcp/host/port"`
+- HTTP/HTTPS → `curl -sf --max-time 10`
+- Auth/Fonctionnel → fallback TCP avec note (SASL, psql, AMQP non dispo dans les pods)
 
 ## Utilisation avec Docker
 
@@ -116,7 +159,7 @@ docker run --rm \
   -v $(pwd)/reports:/app/reports \
   --env-file .env \
   pod-connectivity-tests:latest \
-  --env dev --all --report-format html
+  run --env dev --all --report-format html
 ```
 
 ### Utilisation de Docker Compose
@@ -175,14 +218,14 @@ Compatible avec GitLab CI/CD, Jenkins, etc.
 
 ```bash
 # Vérifier que tous les services sont accessibles
-python main.py --env qa --all
+python main.py run --env qa --all
 
 # Si tous les tests passent (exit code 0), le déploiement peut continuer
 if [ $? -eq 0 ]; then
-  echo "✅ Tous les services sont accessibles"
+  echo "Tous les services sont accessibles"
   # Continuer le déploiement
 else
-  echo "❌ Certains services ne sont pas accessibles"
+  echo "Certains services ne sont pas accessibles"
   exit 1
 fi
 ```
@@ -193,7 +236,7 @@ Configurer un cron job pour exécuter les tests régulièrement:
 
 ```bash
 # Crontab: Tous les jours à 6h du matin
-0 6 * * * cd /path/to/pod-connectivity-tests && ./venv/bin/python main.py --env prod --all --report-format html
+0 6 * * * cd /path/to/pod-connectivity-tests && ./venv/bin/python main.py run --env prod --all --report-format html
 ```
 
 ### Tests de non-régression
@@ -204,7 +247,7 @@ Après une mise à jour d'infrastructure:
 # Tester tous les environnements
 for env in dev qa pp; do
   echo "Testing $env..."
-  python main.py --env $env --all --report-format html
+  python main.py run --env $env --all --report-format html
 done
 ```
 
@@ -276,6 +319,25 @@ ModuleNotFoundError: No module named 'kafka'
 ```bash
 pip install -r requirements.txt
 ```
+
+### Erreur kubectl (mode kubectl)
+
+```
+Error: pod not found for app=pso-out-mapping in namespace cfk-out
+```
+
+**Solution:**
+- Vérifier que le pod tourne : `kubectl get pods -n cfk-out -l app=pso-out-mapping`
+- Vérifier le contexte kubectl actif : `kubectl config current-context`
+- Vérifier que le namespace dans le use case correspond au cluster cible
+
+```
+Error: kubectl exec failed — command not found
+```
+
+**Solution:**
+- `bash` et `/dev/tcp` sont disponibles dans la plupart des images Linux mais pas dans les images distroless
+- Pour les images distroless, utiliser le mode `direct` depuis un pod de debug ou depuis le poste de travail
 
 ## Prochaines Étapes
 

@@ -1,10 +1,10 @@
-# 🎯 Framework de Tests de Connectivité - Pods Kubernetes
+# Framework de Tests de Connectivité - Pods Kubernetes
 
-## 📋 Vue d'ensemble
+## Vue d'ensemble
 
-Framework complet de tests de connectivité pour l'infrastructure Kubernetes de PeopleSpheres, basé sur la matrice des flux réseau. Architecture en 3 couches (Clean Architecture) avec support multi-environnements (DEV/QA/PP/PROD).
+Framework complet de tests de connectivité pour l'infrastructure Kubernetes de PeopleSpheres, basé sur le DAL (Dossier d'Architecture Logicielle). Architecture en 3 couches (Clean Architecture) avec support multi-environnements (DEV/QA/PP/PROD).
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -17,11 +17,9 @@ Framework complet de tests de connectivité pour l'infrastructure Kubernetes de 
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    LAYER 2 - USE CASES                       │
-│           (Logique métier des tests par service)             │
-│  • pso-out-mapping: Tests mapping + Kafka + PostgreSQL      │
-│  • pso-out-scheduler: Tests scheduler + Kafka               │
-│  • core-api: Tests API + RabbitMQ + PostgreSQL + Keycloak   │
-│  • ... (extensible facilement)                              │
+│           (Un use case par service, calqué sur le DAL)       │
+│  usecases/cfk/  → 15 services Connecteur Framework         │
+│  usecases/core/ → 12 services Core API                     │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        ▼
@@ -36,7 +34,7 @@ Framework complet de tests de connectivité pour l'infrastructure Kubernetes de 
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 📦 Contenu du Framework
+## Contenu du Framework
 
 ### Fichiers Principaux
 - **main.py** - Point d'entrée de l'application
@@ -56,10 +54,36 @@ handlers/
 ### Layer 2 - Use Cases (Logique Métier)
 ```
 usecases/
-├── base_usecase.py               # Classe abstraite de base
-├── pso_out_mapping_usecase.py    # Tests pso-out-mapping
-├── pso_out_scheduler_usecase.py  # Tests pso-out-scheduler
-└── core_api_usecase.py           # Tests Core API
+├── base_usecase.py
+├── cfk/                             # Connecteur Framework (15 services)
+│   ├── archive_service_usecase.py
+│   ├── connector_builder_usecase.py
+│   ├── observability_api_usecase.py
+│   ├── open_api_service_usecase.py
+│   ├── pso_data_stack_usecase.py
+│   ├── pso_in_provider_usecase.py
+│   ├── pso_in_service_usecase.py
+│   ├── pso_io_kms_usecase.py
+│   ├── pso_io_transformer_usecase.py
+│   ├── pso_out_file_delivery_usecase.py
+│   ├── pso_out_mapping_usecase.py
+│   ├── pso_out_provider_usecase.py
+│   ├── pso_out_scheduler_usecase.py
+│   ├── pso_out_smart_connector_usecase.py
+│   └── temporal_translator_usecase.py
+└── core/                            # Core API (12 services)
+    ├── core_api_usecase.py
+    ├── queue_worker_usecase.py
+    ├── scheduler_usecase.py
+    ├── rabbit_consumer_usecase.py
+    ├── auth_api_usecase.py
+    ├── docgen_usecase.py
+    ├── search_engine_api_usecase.py
+    ├── search_engine_consumer_usecase.py
+    ├── backoffice_usecase.py
+    ├── pso_io_webhook_usecase.py
+    ├── ecosystem_api_usecase.py
+    └── kms_api_usecase.py
 ```
 
 ### Layer 3 - Infrastructure (Adapters)
@@ -90,11 +114,10 @@ tests/
 README.md          # Documentation principale
 QUICKSTART.md      # Guide démarrage rapide
 ARCHITECTURE.md    # Architecture détaillée 3 layers
-FLUX_MAPPING.md    # Mapping matrice Excel → tests
-STRUCTURE.txt      # Synthèse de la structure
+FLUX_MAPPING.md    # Mapping DAL → tests
 ```
 
-## 🚀 Démarrage Rapide
+## Démarrage Rapide
 
 ### Installation
 ```bash
@@ -111,18 +134,21 @@ cp .env.example .env
 ### Utilisation Basique
 ```bash
 # Lister les services disponibles
-make list-services
+python main.py list-services --env dev
 
 # Exécuter tous les tests en DEV
-make run-dev
+python main.py run --env dev --all
 
 # Tester un service spécifique
-make run-service ENV=dev SERVICE=pso-out-mapping
+python main.py run --env dev --service pso-out-mapping
 
-# Tests par catégorie
-make run-kafka      # Tests Kafka uniquement
-make run-rabbitmq   # Tests RabbitMQ uniquement
-make run-database   # Tests Database uniquement
+# Tests par domaine
+python main.py run --env dev --category cfk    # Tous les services CFK
+python main.py run --env dev --category core   # Tous les services Core API
+
+# Tests par protocole
+python main.py run --env dev --category kafka
+python main.py run --env dev --category rabbitmq
 ```
 
 ### Rapports Générés
@@ -133,7 +159,7 @@ reports/
 └── test_report_dev_20240216_143022.xml   # JUnit XML (CI/CD)
 ```
 
-## 🧪 Types de Tests Implémentés
+## Types de Tests Implémentés
 
 ### 1. Tests de Connectivité
 - Vérification de la disponibilité des services
@@ -153,64 +179,73 @@ reports/
 - **HTTP**: Health checks, endpoints REST
 - **SFTP**: Upload/download fichiers
 
-### 4. Tests de Performance
-- Mesure de latence (en ms)
-- Mesure de throughput
-- Profiling des queries SQL
+## Services Couverts
 
-## 📊 Services Couverts
+### Services CFK (Connecteur Framework) — 15 services
+| Service | Connexions testées |
+|---|---|
+| ✅ archive-service | PostgreSQL CFK (archive), Kafka, SFTP, GCP Secret Manager |
+| ✅ connector-builder | Temporal.io |
+| ✅ observability-api | Kafka (service désactivé → SKIPPED) |
+| ✅ open-api-service | PostgreSQL CFK (openapi), Kafka |
+| ✅ pso-data-stack | PostgreSQL CoreDB, PostgreSQL CFK (openapi), Kafka |
+| ✅ pso-in-provider | PostgreSQL CFK (mapping), Kafka |
+| ✅ pso-in-service | Kafka |
+| ✅ pso-io-kms | PostgreSQL CFK (kms), Kafka |
+| ✅ pso-io-transformer | Kafka |
+| ✅ pso-out-file-delivery | PostgreSQL CFK (file_out_delivery), Kafka, GCP Secret Manager |
+| ✅ pso-out-mapping | PostgreSQL CFK (mapping), Kafka |
+| ✅ pso-out-provider | PostgreSQL CFK (provider), Kafka |
+| ✅ pso-out-scheduler | PostgreSQL CFK (scheduler), Kafka |
+| ✅ pso-out-smart-connector | Kafka |
+| ✅ temporal-translator | Kafka, Temporal.io |
 
-### Services CFK (Connector Framework)
-- ✅ pso-out-mapping
-- ✅ pso-out-scheduler
-- ⏳ pso-out-provider
-- ⏳ pso-out-smart-connector
-- ⏳ pso-out-file-delivery
-- ⏳ pso-io-transformer
-- ⏳ pso-in-provider
-- ⏳ tracking-flow-service
-
-### Services Core
-- ✅ API REST CoreAPI
-- ⏳ AuthAPI Middleware
-- ⏳ Queue Worker
-- ⏳ Scheduler
-- ⏳ Search Engine
-- ⏳ KMS API
+### Services Core API — 12 services
+| Service | Connexions testées |
+|---|---|
+| ✅ core-api | RabbitMQ, PostgreSQL CoreDB+Gateway, KMS API, Search Engine, Keycloak, SFTP |
+| ✅ queue-worker | RabbitMQ, PostgreSQL CoreDB+Gateway, KMS API, Search Engine, Keycloak, SFTP |
+| ✅ scheduler | RabbitMQ, PostgreSQL CoreDB+Gateway, Keycloak, SFTP, Mandrill |
+| ✅ rabbit-consumer | RabbitMQ |
+| ✅ auth-api | CoreAPI HTTP, Keycloak, SFTP |
+| ✅ docgen | RabbitMQ, SFTP, API-TO-PDF |
+| ✅ search-engine-api | PostgreSQL Search Engine, CoreAPI HTTP |
+| ✅ search-engine-consumer | RabbitMQ, PostgreSQL Search Engine |
+| ✅ backoffice | AuthAPI HTTP, PostgreSQL Gateway+SearchEngine, Kafka |
+| ✅ pso-io-webhook | RabbitMQ, PostgreSQL CoreDB, Keycloak |
+| ✅ ecosystem-api | PostgreSQL EcosystemDB, Keycloak |
+| ✅ kms-api | GCP KMS, PostgreSQL KMS |
 
 ### Message Brokers
 - ✅ Kafka (SASL/TLS, port 9092)
 - ✅ RabbitMQ (AMQP/TLS, port 5672)
 
-### Bases de Données
-- ✅ PostgreSQL CoreDB
-- ✅ PostgreSQL Gateway
-- ✅ PostgreSQL Keycloak
-- ⏳ Elasticsearch
+### Bases de Données PostgreSQL
+- ✅ CoreDB, Gateway, Keycloak
+- ✅ CFK (archive, mapping, openapi, kms, file_delivery, provider, scheduler)
+- ✅ Search Engine, Ecosystem, KMS
 
 ### Services Tiers
 - ✅ Keycloak (authentification)
-- ⏳ KONG Gateway
-- ⏳ Memcached
-- ⏳ SFTP Servers
+- ✅ Temporal.io
+- ✅ GCP Secret Manager / GCP KMS
+- ✅ SFTP Servers
 
-**Légende:** ✅ Implémenté | ⏳ À implémenter (template disponible)
-
-## 🔧 Extensibilité
+## Extensibilité
 
 ### Ajouter un Nouveau Service
 
-**Étape 1:** Créer le use case
+**Étape 1:** Créer le use case dans le domaine approprié
 ```python
-# usecases/mon_service_usecase.py
+# usecases/cfk/mon_service_usecase.py  (ou usecases/core/)
 class MonServiceUseCase(BaseServiceUseCase):
     def __init__(self, env_config):
         super().__init__("mon-service", "namespace", env_config)
-        # Initialiser adapters selon matrice de flux
-        
+        # Initialiser adapters selon les connexions du DAL
+
     async def run_connectivity_tests(self):
         # Implémenter tests de connectivité
-        
+
     async def run_functional_tests(self):
         # Implémenter tests fonctionnels
 ```
@@ -218,16 +253,20 @@ class MonServiceUseCase(BaseServiceUseCase):
 **Étape 2:** Enregistrer dans le handler
 ```python
 # handlers/cli_handler.py
-def _get_available_usecases(self, env_config):
-    return [
-        ...,
-        MonServiceUseCase  # <-- Ajouter ici
-    ]
+_CFK_USECASES = [
+    ...,
+    MonServiceUseCase,  # Ajouter à la liste du domaine
+]
+
+_USECASE_MAP = {
+    ...,
+    'mon-service': MonServiceUseCase,
+}
 ```
 
 **C'est tout !** Le nouveau service est automatiquement inclus.
 
-## 🐳 Docker
+## Docker
 
 ### Build et Run
 ```bash
@@ -239,70 +278,36 @@ docker run --rm \
   -v $(pwd)/reports:/app/reports \
   --env-file .env \
   pod-connectivity-tests:latest \
-  --env dev --all
+  run --env dev --all
 
 # Ou avec Docker Compose
 docker-compose up
 ```
 
-## 🔄 CI/CD
+## CI/CD
 
 ### GitLab CI/CD Pipeline
 ```yaml
 # Automatique sur push main/develop
 connectivity_tests_dev:
   script:
-    - python main.py --env dev --all --report-format junit
-    
+    - python main.py run --env dev --all --report-format junit
+
 # Manuel pour QA/PP
 connectivity_tests_qa:
   when: manual
   script:
-    - python main.py --env qa --all --report-format junit
+    - python main.py run --env qa --all --report-format junit
 
 # Scheduled (cron)
 scheduled_connectivity_tests:
   only:
     - schedules
   script:
-    - python main.py --env dev --all
+    - python main.py run --env dev --all
 ```
 
-## 📈 Métriques et Rapports
-
-### Rapport HTML Interactif
-- Résumé global avec graphiques
-- Détails par service et namespace
-- Messages d'erreur détaillés
-- Durée d'exécution
-- Taux de succès
-
-### Rapport JSON
-```json
-{
-  "environment": "dev",
-  "summary": {
-    "total_tests": 45,
-    "passed": 42,
-    "failed": 3,
-    "success_rate": 93.33
-  },
-  "suites": [...]
-}
-```
-
-### Rapport JUnit XML
-Compatible avec GitLab CI/CD, Jenkins, etc.
-
-## 📚 Documentation
-
-- **README.md** - Ce fichier
-- **QUICKSTART.md** - Guide de démarrage rapide
-- **ARCHITECTURE.md** - Documentation architecture détaillée
-- **FLUX_MAPPING.md** - Guide de mapping matrice Excel → tests
-- **STRUCTURE.txt** - Vue d'ensemble de la structure
-
-## 🛠️ Commandes Make Disponibles
+## Commandes Make Disponibles
 
 ```bash
 make help              # Affiche toutes les commandes
@@ -318,7 +323,7 @@ make lint             # Vérifie code
 make format           # Formate code
 ```
 
-## 🔐 Sécurité
+## Securité
 
 - Credentials stockés dans `.env` (non versionné)
 - Support mTLS pour PostgreSQL
@@ -326,49 +331,19 @@ make format           # Formate code
 - Support AMQP/TLS pour RabbitMQ
 - Variables d'environnement pour tous les secrets
 
-## 📝 Basé sur la Matrice de Flux
+## Basé sur le DAL
 
-Ce framework est directement basé sur la matrice des flux PeopleSpheres:
-- Onglet "Core_Services" → Tests services core
-- Onglet "CFK" → Tests services CFK
-- Onglet "Broker_Services" → Tests Kafka/RabbitMQ
-- Onglet "Kafka_ACL" → Validation topics et droits
-- Onglet "RabbitMQ" → Validation queues
-- Onglet "External_DB" → Tests PostgreSQL
+Ce framework est directement basé sur le DAL (Dossier d'Architecture Logicielle) PeopleSpheres:
+- Connexions CFK → Use cases `usecases/cfk/`
+- Connexions Core → Use cases `usecases/core/`
+- Chaque use case ne teste que les connexions déclarées dans le DAL pour son service
 
 Voir **FLUX_MAPPING.md** pour détails du mapping.
 
-## 🎯 Use Cases Principaux
-
-1. **Tests pré-déploiement** - Vérifier infrastructure avant deploy
-2. **Tests post-déploiement** - Valider que tout fonctionne
-3. **Monitoring continu** - Scheduled tests quotidiens
-4. **Non-régression** - Après changement infrastructure
-5. **Documentation** - Preuve de connectivité
-
-## 🚦 Status du Projet
-
-✅ **Livré:**
-- Architecture 3 layers complète
-- 5 adapters (Kafka, RabbitMQ, PostgreSQL, HTTP, SFTP)
-- 3 use cases exemples (pso-out-mapping, pso-out-scheduler, core-api)
-- CLI handler avec multi-environnements
-- Génération rapports HTML/JSON/JUnit
-- Tests unitaires
-- Documentation complète
-- Docker + GitLab CI/CD
-
-⏳ **À venir:**
-- Use cases additionnels pour tous les services
-- Dashboard Grafana
-- Alerting Slack/Email
-- Tests de performance avancés
-- Intégration Prometheus
-
-## 👥 Auteur
+## Auteur
 
 Framework développé pour PeopleSpheres - DevOps/Platform Engineering
 
-## 📄 Licence
+## Licence
 
 Propriétaire PeopleSpheres

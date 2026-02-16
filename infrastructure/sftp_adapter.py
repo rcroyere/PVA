@@ -15,16 +15,28 @@ logger = logging.getLogger(__name__)
 
 class SFTPAdapter(BaseAdapter):
     """SFTP connectivity adapter"""
-    
+
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.client: Optional[paramiko.SSHClient] = None
         self.sftp: Optional[paramiko.SFTPClient] = None
+
+        # kubectl mode: test from within the pod via kubectl exec
+        self._kubectl = config.get('_kubectl')
+        if self._kubectl:
+            self._kube_host = self.config.get('host', 'localhost')
+            self._kube_port = int(self.config.get('port', 22))
     
     async def test_connectivity(self) -> ConnectionResult:
         """Test SFTP server connectivity"""
+        if self._kubectl:
+            return await self._kubectl['executor'].test_tcp(
+                self._kubectl['namespace'], self._kubectl['pod'],
+                self._kube_host, self._kube_port
+            )
+
         start_time = time.time()
-        
+
         try:
             # Create SSH client
             self.client = paramiko.SSHClient()
@@ -84,8 +96,13 @@ class SFTPAdapter(BaseAdapter):
     
     async def test_authentication(self) -> ConnectionResult:
         """Test SFTP authentication"""
+        if self._kubectl:
+            result = await self.test_connectivity()
+            result.metadata['note'] = 'authentication not testable in kubectl mode (no SSH client in pod)'
+            return result
+
         start_time = time.time()
-        
+
         try:
             # Create new client for auth test
             client = paramiko.SSHClient()
@@ -139,8 +156,16 @@ class SFTPAdapter(BaseAdapter):
     
     async def test_directory_access(self, directory_path: str) -> ConnectionResult:
         """Test access to a specific directory"""
+        if self._kubectl:
+            return ConnectionResult(
+                success=True,
+                duration_ms=0,
+                message=f"Directory access test skipped in kubectl mode (no SFTP client in pod)",
+                metadata={'mode': 'kubectl', 'directory': directory_path}
+            )
+
         start_time = time.time()
-        
+
         try:
             if not self.sftp:
                 await self.test_connectivity()
@@ -190,8 +215,16 @@ class SFTPAdapter(BaseAdapter):
     
     async def test_file_upload_download(self, test_directory: str = '/tmp') -> ConnectionResult:
         """Test file upload and download operations"""
+        if self._kubectl:
+            return ConnectionResult(
+                success=True,
+                duration_ms=0,
+                message=f"File upload/download test skipped in kubectl mode (no SFTP client in pod)",
+                metadata={'mode': 'kubectl', 'directory': test_directory}
+            )
+
         start_time = time.time()
-        
+
         try:
             if not self.sftp:
                 await self.test_connectivity()

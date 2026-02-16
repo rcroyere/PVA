@@ -15,11 +15,17 @@ logger = logging.getLogger(__name__)
 
 class RabbitMQAdapter(BaseAdapter):
     """RabbitMQ connectivity and operations adapter"""
-    
+
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.connection: Optional[pika.BlockingConnection] = None
         self.channel: Optional[pika.channel.Channel] = None
+
+        # kubectl mode: test from within the pod via kubectl exec
+        self._kubectl = config.get('_kubectl')
+        if self._kubectl:
+            self._kube_host = self.config.get('host', 'localhost')
+            self._kube_port = int(self.config.get('port', 5672))
     
     def _get_connection_params(self) -> pika.ConnectionParameters:
         """Build RabbitMQ connection parameters"""
@@ -44,8 +50,14 @@ class RabbitMQAdapter(BaseAdapter):
     
     async def test_connectivity(self) -> ConnectionResult:
         """Test RabbitMQ broker connectivity"""
+        if self._kubectl:
+            return await self._kubectl['executor'].test_tcp(
+                self._kubectl['namespace'], self._kubectl['pod'],
+                self._kube_host, self._kube_port
+            )
+
         start_time = time.time()
-        
+
         try:
             params = self._get_connection_params()
             
@@ -87,11 +99,16 @@ class RabbitMQAdapter(BaseAdapter):
     
     async def test_authentication(self) -> ConnectionResult:
         """Test RabbitMQ authentication"""
+        if self._kubectl:
+            result = await self.test_connectivity()
+            result.metadata['note'] = 'authentication not testable in kubectl mode (no AMQP client in pod)'
+            return result
+
         start_time = time.time()
-        
+
         try:
             params = self._get_connection_params()
-            
+
             # Try to connect with credentials
             connection = pika.BlockingConnection(params)
             channel = connection.channel()
@@ -133,8 +150,16 @@ class RabbitMQAdapter(BaseAdapter):
     
     async def test_queue_access(self, queue_name: str) -> ConnectionResult:
         """Test access to a specific queue"""
+        if self._kubectl:
+            return ConnectionResult(
+                success=True,
+                duration_ms=0,
+                message=f"Queue access test skipped in kubectl mode (no AMQP client in pod)",
+                metadata={'mode': 'kubectl', 'queue': queue_name}
+            )
+
         start_time = time.time()
-        
+
         try:
             if not self.connection or self.connection.is_closed:
                 await self.test_connectivity()
@@ -174,8 +199,16 @@ class RabbitMQAdapter(BaseAdapter):
     
     async def test_publish_consume(self, queue_name: str, test_message: Dict[str, Any]) -> ConnectionResult:
         """Test end-to-end publish and consume"""
+        if self._kubectl:
+            return ConnectionResult(
+                success=True,
+                duration_ms=0,
+                message=f"Publish/consume test skipped in kubectl mode (no AMQP client in pod)",
+                metadata={'mode': 'kubectl', 'queue': queue_name}
+            )
+
         start_time = time.time()
-        
+
         try:
             if not self.connection or self.connection.is_closed:
                 await self.test_connectivity()

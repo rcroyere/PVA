@@ -7,7 +7,7 @@ environments:
       sasl_mechanism: "PLAIN"
       sasl_username: "${KAFKA_DEV_USERNAME}"
       sasl_password: "${KAFKA_DEV_PASSWORD}"
-      
+
     rabbitmq:
       host: "rabbitmq-dev.peoplespheres.local"
       port: 5672
@@ -15,8 +15,9 @@ environments:
       username: "${RABBITMQ_DEV_USERNAME}"
       password: "${RABBITMQ_DEV_PASSWORD}"
       ssl: true
-      
+
     postgresql:
+      # Core API databases
       core_db:
         host: "postgresql-dev.peoplespheres.local"
         port: 5432
@@ -38,51 +39,231 @@ environments:
         username: "${POSTGRES_KEYCLOAK_DEV_USERNAME}"
         password: "${POSTGRES_KEYCLOAK_DEV_PASSWORD}"
         ssl_mode: "require"
-        
+      search_engine:
+        host: "postgresql-dev.peoplespheres.local"
+        port: 5432
+        database: "core_db"
+        username: "${POSTGRES_SEARCH_ENGINE_DEV_USERNAME}"
+        password: "${POSTGRES_SEARCH_ENGINE_DEV_PASSWORD}"
+        ssl_mode: "require"
+      ecosystem:
+        host: "postgresql-dev.peoplespheres.local"
+        port: 5432
+        database: "core_db"
+        username: "${POSTGRES_ECOSYSTEM_DEV_USERNAME}"
+        password: "${POSTGRES_ECOSYSTEM_DEV_PASSWORD}"
+        ssl_mode: "require"
+      kms:
+        host: "postgresql-dev.peoplespheres.local"
+        port: 5432
+        database: "core_db"
+        username: "${POSTGRES_KMS_DEV_USERNAME}"
+        password: "${POSTGRES_KMS_DEV_PASSWORD}"
+        ssl_mode: "require"
+      # CFK databases (same CFK PostgreSQL server, distinct databases)
+      cfk_archive:
+        host: "postgresql-cfk-dev.peoplespheres.local"
+        port: 5432
+        database: "archive"
+        username: "${POSTGRES_CFK_DEV_ARCHIVE_USERNAME}"
+        password: "${POSTGRES_CFK_DEV_ARCHIVE_PASSWORD}"
+        ssl_mode: "require"
+      cfk_mapping:
+        host: "postgresql-cfk-dev.peoplespheres.local"
+        port: 5432
+        database: "pso_out_mapping"
+        username: "${POSTGRES_CFK_DEV_MAPPING_USERNAME}"
+        password: "${POSTGRES_CFK_DEV_MAPPING_PASSWORD}"
+        ssl_mode: "require"
+      cfk_openapi:
+        host: "postgresql-cfk-dev.peoplespheres.local"
+        port: 5432
+        database: "openapi"
+        username: "${POSTGRES_CFK_DEV_OPENAPI_USERNAME}"
+        password: "${POSTGRES_CFK_DEV_OPENAPI_PASSWORD}"
+        ssl_mode: "require"
+      cfk_kms:
+        host: "postgresql-cfk-dev.peoplespheres.local"
+        port: 5432
+        database: "pso_io_kms"
+        username: "${POSTGRES_CFK_DEV_KMS_USERNAME}"
+        password: "${POSTGRES_CFK_DEV_KMS_PASSWORD}"
+        ssl_mode: "require"
+      cfk_file_delivery:
+        host: "postgresql-cfk-dev.peoplespheres.local"
+        port: 5432
+        database: "file_out_delivery"
+        username: "${POSTGRES_CFK_DEV_FILE_DELIVERY_USERNAME}"
+        password: "${POSTGRES_CFK_DEV_FILE_DELIVERY_PASSWORD}"
+        ssl_mode: "require"
+      cfk_provider:
+        host: "postgresql-cfk-dev.peoplespheres.local"
+        port: 5432
+        database: "pso_out_mapping"
+        username: "${POSTGRES_CFK_DEV_PROVIDER_USERNAME}"
+        password: "${POSTGRES_CFK_DEV_PROVIDER_PASSWORD}"
+        ssl_mode: "require"
+      cfk_scheduler:
+        host: "postgresql-cfk-dev.peoplespheres.local"
+        port: 5432
+        database: "pso_out_scheduler"
+        username: "${POSTGRES_CFK_DEV_SCHEDULER_USERNAME}"
+        password: "${POSTGRES_CFK_DEV_SCHEDULER_PASSWORD}"
+        ssl_mode: "require"
+
     elasticsearch:
       hosts:
         - "https://elasticsearch-dev.peoplespheres.local:9200"
       username: "${ES_DEV_USERNAME}"
       password: "${ES_DEV_PASSWORD}"
-      
+
     keycloak:
       url: "https://keycloak-dev.peoplespheres.local:8443"
       realm: "peoplespheres"
       client_id: "${KEYCLOAK_CLIENT_ID}"
       client_secret: "${KEYCLOAK_CLIENT_SECRET}"
-      
+
     kong:
       url: "https://kong-dev.peoplespheres.local:8080"
       admin_url: "https://kong-admin-dev.peoplespheres.local:8001"
-      
+
     memcached:
       servers:
         - "memcached-dev.peoplespheres.local:11211"
-        
+
     sftp:
       host: "sftp-dev.peoplespheres.local"
       port: 2324
       username: "${SFTP_DEV_USERNAME}"
       password: "${SFTP_DEV_PASSWORD}"
-      
+
+    external_services:
+      temporal_url: "https://temporal-dev.peoplespheres.local:8080"
+      gcp_secret_manager_url: "https://secretmanager.googleapis.com"
+      gcp_kms_url: "https://cloudkms.googleapis.com"
+      api_to_pdf_url: "http://api-to-pdf.webapp-apis.svc.cluster.local:8080"
+      core_api_url: "http://core-api.webapp-apis.svc.cluster.local:8080"
+      auth_api_url: "http://auth-api.webapp-apis.svc.cluster.local:8080"
+      search_engine_api_url: "http://search-engine-api.webapp-apis.svc.cluster.local:9200"
+      kms_api_url: "http://kms-api.webapp-apis.svc.cluster.local:8080"
+
     services:
+      # CFK services
+      archive-service:
+        namespace: "cfk-shared"
+        service_name: "archive-service"
+        port: 8080
+      connector-builder:
+        namespace: "cfk-shared"
+        service_name: "connector-builder"
+        port: 8080
+      observability-api:
+        namespace: "cfk-shared"
+        service_name: "observability-api"
+        port: 8080
+        disabled: true
+      open-api-service:
+        namespace: "cfk-shared"
+        service_name: "open-api-service"
+        port: 8080
+      pso-data-flow:
+        namespace: "cfk-in"
+        service_name: "pso-data-flow"
+        port: 8080
+      pso-in-provider:
+        namespace: "cfk-in"
+        service_name: "pso-in-provider"
+        port: 8080
+      pso-in-service:
+        namespace: "cfk-in"
+        service_name: "pso-in-service"
+        port: 8080
+      pso-io-kms:
+        namespace: "cfk-shared"
+        service_name: "pso-io-kms"
+        port: 8080
+      pso-io-transformer:
+        namespace: "cfk-shared"
+        service_name: "pso-io-transformer"
+        port: 8080
+      pso-out-file-delivery:
+        namespace: "cfk-out"
+        service_name: "pso-out-file-delivery"
+        port: 8080
       pso-out-mapping:
         namespace: "cfk-out"
         service_name: "pso-out-mapping"
-        port: 8080
-      pso-out-scheduler:
-        namespace: "cfk-out"
-        service_name: "pso-out-scheduler"
         port: 8080
       pso-out-provider:
         namespace: "cfk-out"
         service_name: "pso-out-provider"
         port: 8080
+      pso-out-scheduler:
+        namespace: "cfk-out"
+        service_name: "pso-out-scheduler"
+        port: 8080
+      pso-out-smart-connector:
+        namespace: "cfk-out"
+        service_name: "pso-out-smart-connector"
+        port: 8080
+      temporal-translator:
+        namespace: "cfk-out"
+        service_name: "temporal-translator"
+        port: 8080
       tracking-flow-service:
         namespace: "cfk-shared"
         service_name: "tracking-flow-service"
         port: 8080
-        
+      # Core API services
+      core-api:
+        namespace: "webapp-apis"
+        service_name: "core-api"
+        port: 8080
+      queue-worker:
+        namespace: "webapp-apis"
+        service_name: "queue-worker"
+        port: 8080
+      scheduler:
+        namespace: "webapp-apis"
+        service_name: "scheduler"
+        port: 8080
+      rabbit-consumer:
+        namespace: "webapp-apis"
+        service_name: "rabbit-consumer"
+        port: 8080
+      auth-api:
+        namespace: "webapp-apis"
+        service_name: "auth-api"
+        port: 8080
+      docgen:
+        namespace: "webapp-apis"
+        service_name: "docgen"
+        port: 8080
+      search-engine-api:
+        namespace: "webapp-apis"
+        service_name: "search-engine-api"
+        port: 9200
+      search-engine-consumer:
+        namespace: "webapp-apis"
+        service_name: "search-engine-consumer"
+        port: 8080
+      backoffice:
+        namespace: "webapp-apis"
+        service_name: "backoffice"
+        port: 8080
+      pso-io-webhook:
+        namespace: "webapp-apis"
+        service_name: "pso-io-webhook"
+        port: 8080
+      ecosystem-api:
+        namespace: "webapp-apis"
+        service_name: "ecosystem-api"
+        port: 8080
+      kms-api:
+        namespace: "webapp-apis"
+        service_name: "kms-api"
+        port: 8080
+
   qa:
     kafka:
       bootstrap_servers:
@@ -91,7 +272,7 @@ environments:
       sasl_mechanism: "PLAIN"
       sasl_username: "${KAFKA_QA_USERNAME}"
       sasl_password: "${KAFKA_QA_PASSWORD}"
-      
+
     rabbitmq:
       host: "rabbitmq-qa.peoplespheres.local"
       port: 5672
@@ -99,7 +280,7 @@ environments:
       username: "${RABBITMQ_QA_USERNAME}"
       password: "${RABBITMQ_QA_PASSWORD}"
       ssl: true
-      
+
     postgresql:
       core_db:
         host: "postgresql-qa.peoplespheres.local"
@@ -108,7 +289,7 @@ environments:
         username: "${POSTGRES_QA_USERNAME}"
         password: "${POSTGRES_QA_PASSWORD}"
         ssl_mode: "require"
-        
+
   pp:
     kafka:
       bootstrap_servers:
@@ -117,7 +298,7 @@ environments:
       sasl_mechanism: "PLAIN"
       sasl_username: "${KAFKA_PP_USERNAME}"
       sasl_password: "${KAFKA_PP_PASSWORD}"
-      
+
     rabbitmq:
       host: "rabbitmq-pp.peoplespheres.local"
       port: 5672
@@ -125,7 +306,7 @@ environments:
       username: "${RABBITMQ_PP_USERNAME}"
       password: "${RABBITMQ_PP_PASSWORD}"
       ssl: true
-      
+
   prod:
     kafka:
       bootstrap_servers:
@@ -134,7 +315,7 @@ environments:
       sasl_mechanism: "PLAIN"
       sasl_username: "${KAFKA_PROD_USERNAME}"
       sasl_password: "${KAFKA_PROD_PASSWORD}"
-      
+
     rabbitmq:
       host: "rabbitmq-prod.peoplespheres.local"
       port: 5672
@@ -149,12 +330,12 @@ test_settings:
   retry_delay: 5
   parallel_execution: true
   max_workers: 10
-  
+
 logging:
   level: "INFO"
   format: "json"
   output_dir: "logs"
-  
+
 reporting:
   output_dir: "reports"
   formats:

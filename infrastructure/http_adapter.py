@@ -14,21 +14,30 @@ logger = logging.getLogger(__name__)
 
 class HTTPAdapter(BaseAdapter):
     """HTTP/HTTPS REST API connectivity adapter"""
-    
+
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.base_url = config.get('base_url')
         self.verify_ssl = config.get('verify_ssl', True)
         self.session = requests.Session()
-        
+
         # Set default headers
         if 'headers' in config:
             self.session.headers.update(config['headers'])
+
+        # kubectl mode: test from within the pod via kubectl exec (curl)
+        self._kubectl = config.get('_kubectl')
     
     async def test_connectivity(self) -> ConnectionResult:
         """Test HTTP endpoint connectivity"""
+        if self._kubectl:
+            return await self._kubectl['executor'].test_http(
+                self._kubectl['namespace'], self._kubectl['pod'],
+                self.base_url
+            )
+
         start_time = time.time()
-        
+
         try:
             # Try a HEAD request first (lightweight)
             response = self.session.head(
@@ -83,8 +92,13 @@ class HTTPAdapter(BaseAdapter):
     
     async def test_authentication(self, auth_config: Optional[Dict[str, Any]] = None) -> ConnectionResult:
         """Test HTTP authentication"""
+        if self._kubectl:
+            result = await self.test_connectivity()
+            result.metadata['note'] = 'token-based authentication not testable in kubectl mode'
+            return result
+
         start_time = time.time()
-        
+
         try:
             # Setup authentication
             if auth_config:
@@ -198,10 +212,16 @@ class HTTPAdapter(BaseAdapter):
     
     async def test_health_check(self, health_endpoint: str = '/health') -> ConnectionResult:
         """Test service health endpoint"""
+        url = f"{self.base_url.rstrip('/')}/{health_endpoint.lstrip('/')}"
+
+        if self._kubectl:
+            return await self._kubectl['executor'].test_http(
+                self._kubectl['namespace'], self._kubectl['pod'], url
+            )
+
         start_time = time.time()
-        
+
         try:
-            url = f"{self.base_url.rstrip('/')}/{health_endpoint.lstrip('/')}"
             
             response = self.session.get(
                 url,

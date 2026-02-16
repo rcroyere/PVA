@@ -1,12 +1,12 @@
-# Mapping Matrice de Flux → Tests
+# Mapping DAL → Tests
 
-Ce document explique comment la matrice des flux Excel a été traduite en tests automatisés.
+Ce document explique comment le DAL (Dossier d'Architecture Logicielle) a été traduit en tests automatisés.
 
 ## Principe de Mapping
 
-Pour chaque ligne de la matrice de flux, nous créons des tests correspondants dans le use case du service source.
+Pour chaque connexion déclarée dans le DAL pour un service, nous créons des tests correspondants dans le use case de ce service.
 
-### Structure de la Matrice
+### Structure d'une Connexion DAL
 
 ```
 Source → Destination | Sens | Port | Sécurité | Justification
@@ -17,13 +17,12 @@ Source → Destination | Sens | Port | Sécurité | Justification
 1. **Test de Connectivité** - Peut-on joindre la destination?
 2. **Test d'Authentification** - Les credentials fonctionnent-ils?
 3. **Test Fonctionnel** - Peut-on effectuer l'opération métier?
-4. **Test de Performance** - Quelle est la latence?
 
 ## Exemples de Mapping
 
 ### Exemple 1: pso-out-mapping → Kafka
 
-**Matrice de flux:**
+**DAL:**
 ```
 Source: pso-out-mapping
 Destination: Kafka
@@ -36,32 +35,29 @@ Sécurité: SASL/TLS
 
 ```python
 class PSOOutMappingUseCase(BaseServiceUseCase):
-    
+
     async def run_connectivity_tests(self):
         # Test 1: Connexion au broker Kafka
         kafka_result = await self.kafka_adapter.test_connectivity()
-        
+
         # Test 2: Authentification SASL
         kafka_auth = await self.kafka_adapter.test_authentication()
-    
+
     async def run_functional_tests(self):
         # Test 3: Accès en lecture aux topics
         topic_read = await self.kafka_adapter.test_topic_access(
             'dev.backoffice.in.request.data.json', 'READ'
         )
-        
+
         # Test 4: Accès en écriture aux topics
         topic_write = await self.kafka_adapter.test_topic_access(
             'dev.out.processing.exceptions', 'WRITE'
         )
-        
-        # Test 5: Test end-to-end publish/consume
-        e2e = await self.kafka_adapter.test_produce_consume(...)
 ```
 
 ### Exemple 2: Core API → RabbitMQ
 
-**Matrice de flux:**
+**DAL:**
 ```
 Source: API REST (CoreAPI)
 Destination: RabbitMQ Message Broker
@@ -74,25 +70,25 @@ Sécurité: AMQP/TLS
 
 ```python
 class CoreAPIUseCase(BaseServiceUseCase):
-    
+
     async def run_connectivity_tests(self):
         # Test 1: Connexion au broker RabbitMQ
         rabbitmq_result = await self.rabbitmq_adapter.test_connectivity()
-        
+
         # Test 2: Authentification AMQP
         rabbitmq_auth = await self.rabbitmq_adapter.test_authentication()
-    
+
     async def run_functional_tests(self):
         # Test 3: Accès à la queue core.jobs
         queue_access = await self.rabbitmq_adapter.test_queue_access('core.jobs')
-        
+
         # Test 4: Test publish/consume
         e2e = await self.rabbitmq_adapter.test_publish_consume('core.jobs', {})
 ```
 
 ### Exemple 3: Core API → PostgreSQL
 
-**Matrice de flux:**
+**DAL:**
 ```
 Source: API REST (CoreAPI)
 Destination: PostgreSQL CoreDB
@@ -107,19 +103,19 @@ User: core_db
 
 ```python
 class CoreAPIUseCase(BaseServiceUseCase):
-    
+
     async def run_connectivity_tests(self):
         # Test 1: Connexion à PostgreSQL
         pg_result = await self.pg_adapter.test_connectivity()
-        
+
         # Test 2: Authentification avec user core_db
         pg_auth = await self.pg_adapter.test_authentication()
-    
+
     async def run_functional_tests(self):
         # Test 3: Accès aux tables métier
         for table in ['users', 'organizations', 'roles']:
             table_access = await self.pg_adapter.test_table_access(table)
-        
+
         # Test 4: Performance d'une query type
         query_perf = await self.pg_adapter.test_query_performance(
             "SELECT COUNT(*) FROM users WHERE active = true"
@@ -130,7 +126,7 @@ class CoreAPIUseCase(BaseServiceUseCase):
 
 ### Kafka (SASL/TLS, port 9092)
 
-**Flux dans la matrice:**
+**Flux dans le DAL:**
 - Sens: Bidirectionnel / Sortant / Entrant
 - ACLs définies dans l'onglet "Kafka_ACL"
 
@@ -143,7 +139,6 @@ class CoreAPIUseCase(BaseServiceUseCase):
 # Fonctionnel (basé sur ACLs)
 - test_kafka_topic_read_{topic_name}()   # Pour chaque topic en READ
 - test_kafka_topic_write_{topic_name}()  # Pour chaque topic en WRITE
-- test_kafka_produce_consume_e2e()       # Test end-to-end
 ```
 
 **Exemple avec ACLs:**
@@ -157,7 +152,7 @@ Right: READ
 
 ### RabbitMQ (AMQP/TLS, port 5672)
 
-**Flux dans la matrice:**
+**Flux dans le DAL:**
 - VHost: / (par défaut)
 - Queues définies dans l'onglet "RabbitMQ"
 
@@ -182,8 +177,8 @@ Environment: DEV
 
 ### PostgreSQL (mTLS, port 5432)
 
-**Flux dans la matrice:**
-- Onglet "External_DB"
+**Flux dans le DAL:**
+- Plusieurs bases: CoreDB, Gateway, Keycloak, CFK×7, Search Engine, Ecosystem, KMS
 - Database, User spécifiés
 
 **Tests générés:**
@@ -199,9 +194,8 @@ Environment: DEV
 
 ### HTTP/HTTPS (mTLS, ports 8080/8443)
 
-**Flux dans la matrice:**
-- Services REST API
-- Health checks
+**Flux dans le DAL:**
+- Services REST API internes et externes
 
 **Tests générés:**
 ```python
@@ -216,7 +210,7 @@ Environment: DEV
 
 ### SFTP (SSH, ports 22/2324)
 
-**Flux dans la matrice:**
+**Flux dans le DAL:**
 - File delivery services
 
 **Tests générés:**
@@ -234,7 +228,7 @@ Environment: DEV
 
 ### Étape 1: Identifier les Flux du Service
 
-Aller dans la matrice Excel et filtrer par "Source" = nom du service
+Aller dans le DAL et filtrer par service source.
 
 Exemple pour `pso-out-file-delivery`:
 ```
@@ -246,6 +240,7 @@ pso-out-file-delivery → Kafka (9092, SASL/TLS)
 ### Étape 2: Créer le Use Case
 
 ```python
+# usecases/cfk/pso_out_file_delivery_usecase.py  (ou usecases/core/)
 class PSOOutFileDeliveryUseCase(BaseServiceUseCase):
     def __init__(self, env_config):
         super().__init__(
@@ -253,8 +248,8 @@ class PSOOutFileDeliveryUseCase(BaseServiceUseCase):
             namespace="cfk-out",
             env_config=env_config
         )
-        
-        # Initialiser les adapters selon les flux
+
+        # Initialiser les adapters selon les flux du DAL
         self.pg_adapter = PostgreSQLAdapter(...)
         self.sftp_adapter = SFTPAdapter(...)
         self.kafka_adapter = KafkaAdapter(...)
@@ -267,38 +262,38 @@ Pour chaque destination unique, créer un test de connectivité:
 ```python
 async def run_connectivity_tests(self):
     results = []
-    
+
     # PostgreSQL
     pg_result = await self.pg_adapter.test_connectivity()
     results.append(self._create_test_result(...))
-    
+
     # SFTP
     sftp_result = await self.sftp_adapter.test_connectivity()
     results.append(self._create_test_result(...))
-    
+
     # Kafka
     kafka_result = await self.kafka_adapter.test_connectivity()
     results.append(self._create_test_result(...))
-    
+
     return results
 ```
 
 ### Étape 4: Implémenter les Tests Fonctionnels
 
-Basé sur la justification métier dans la matrice:
+Basé sur la justification métier dans le DAL:
 
 ```python
 async def run_functional_tests(self):
     results = []
-    
+
     # Test SFTP upload (basé sur justification: "File delivery")
     sftp_test = await self.sftp_adapter.test_file_upload_download('/delivery')
     results.append(self._create_test_result(...))
-    
+
     # Test Kafka topics (basé sur ACLs)
     topic_test = await self.kafka_adapter.test_topic_access(...)
     results.append(self._create_test_result(...))
-    
+
     return results
 ```
 
@@ -307,19 +302,24 @@ async def run_functional_tests(self):
 Dans `handlers/cli_handler.py`:
 
 ```python
-def _get_available_usecases(self, env_config):
-    return [
-        PSOOutMappingUseCase,
-        PSOOutFileDeliveryUseCase,  # <-- Ajouter ici
-        # ...
-    ]
+from usecases.cfk.mon_service_usecase import MonServiceUseCase
+
+_CFK_USECASES = [
+    ...,
+    MonServiceUseCase,  # Ajouter à la liste du domaine
+]
+
+_USECASE_MAP = {
+    ...,
+    'mon-service': MonServiceUseCase,  # Pour --service mon-service
+}
 ```
 
 ## Checklist de Validation
 
 Avant de considérer un use case complet, vérifier:
 
-- [ ] Tous les flux de la matrice sont couverts
+- [ ] Tous les flux du DAL sont couverts
 - [ ] Tests de connectivité pour chaque destination
 - [ ] Tests d'authentification pour chaque protocole sécurisé
 - [ ] Tests fonctionnels pour les opérations critiques
@@ -330,22 +330,21 @@ Avant de considérer un use case complet, vérifier:
 - [ ] Gestion d'erreurs appropriée
 - [ ] Logging informatif
 
-## Correspondance Onglets Excel → Tests
+## Correspondance DAL → Tests
 
-| Onglet Excel | Tests Générés |
-|--------------|---------------|
-| Core_Services | Use cases pour services core (CoreAPI, AuthAPI, etc.) |
-| CFK | Use cases pour services CFK (pso-out-*, pso-in-*, etc.) |
-| Broker_Services | Tests Kafka et RabbitMQ dans chaque use case |
-| RabbitMQ | Validation des queues dans tests RabbitMQ |
-| Kafka_ACL | Validation des topics et droits READ/WRITE |
-| External_DB | Tests PostgreSQL avec databases spécifiques |
-| Third_Party_Services | Tests Keycloak, KONG, Memcached, etc. |
-| File_Services | Tests SFTP et filesystem |
+| Source DAL | Use Cases générés |
+|---|---|
+| Services CFK | `usecases/cfk/` (15 use cases) |
+| Services Core API | `usecases/core/` (12 use cases) |
+| Kafka ACLs | Tests `test_topic_read_*` / `test_topic_write_*` |
+| Queues RabbitMQ | Tests `test_queue_access_*` |
+| PostgreSQL databases | Tests par base (CoreDB, Gateway, CFK×7, etc.) |
+| Services tiers | Tests HTTP (Keycloak, Temporal, GCP, etc.) |
+| SFTP/File services | Tests SFTP upload/download |
 
 ## Maintenance
 
-Lorsque la matrice de flux est mise à jour:
+Lorsque le DAL est mis à jour:
 
 1. **Nouveau flux ajouté**
    - Ajouter le test correspondant dans le use case
@@ -360,34 +359,40 @@ Lorsque la matrice de flux est mise à jour:
    - Ne pas supprimer immédiatement (garder historique)
 
 4. **Nouveau service**
-   - Créer un nouveau use case
+   - Créer un nouveau use case dans `usecases/cfk/` ou `usecases/core/`
    - Implémenter tous les flux du service
-   - Ajouter au handler
+   - Ajouter au handler (`_CFK_USECASES` / `_USECASE_MAP`)
 
 ## Exemple Complet: Workflow de Création
 
 ```bash
-# 1. Analyser la matrice
-grep "mon-service" MatriceFlux.xlsx
+# 1. Analyser le DAL
+# Identifier les connexions du nouveau service
 
-# 2. Créer le use case
-cp usecases/pso_out_mapping_usecase.py usecases/mon_service_usecase.py
+# 2. Créer le use case dans le bon répertoire
+cp usecases/cfk/pso_out_mapping_usecase.py usecases/cfk/mon_service_usecase.py
+# ou
+cp usecases/core/rabbit_consumer_usecase.py usecases/core/mon_service_usecase.py
 
 # 3. Adapter le code
 # - Remplacer nom du service
-# - Ajouter/retirer adapters selon flux
+# - Ajouter/retirer adapters selon flux du DAL
 # - Implémenter tests de connectivité
 # - Implémenter tests fonctionnels
 
-# 4. Tester
-python main.py --env dev --service mon-service
+# 4. Enregistrer dans handlers/cli_handler.py
+# - Ajouter l'import
+# - Ajouter à _CFK_USECASES ou _CORE_USECASES
+# - Ajouter à _USECASE_MAP
 
-# 5. Valider
+# 5. Tester
+python main.py run --env dev --service mon-service
+
+# 6. Valider
 # - Tous les tests passent
 # - Rapports corrects
-# - Cleanup OK
 
-# 6. Commit
-git add usecases/mon_service_usecase.py
+# 7. Commit
+git add usecases/cfk/mon_service_usecase.py handlers/cli_handler.py
 git commit -m "Add tests for mon-service"
 ```

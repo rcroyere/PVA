@@ -1,0 +1,163 @@
+environments:
+  dev:
+    kafka:
+      bootstrap_servers:
+        - "kafka-dev.peoplespheres.local:9092"
+      security_protocol: "SASL_SSL"
+      sasl_mechanism: "PLAIN"
+      sasl_username: "${KAFKA_DEV_USERNAME}"
+      sasl_password: "${KAFKA_DEV_PASSWORD}"
+      
+    rabbitmq:
+      host: "rabbitmq-dev.peoplespheres.local"
+      port: 5672
+      vhost: "/"
+      username: "${RABBITMQ_DEV_USERNAME}"
+      password: "${RABBITMQ_DEV_PASSWORD}"
+      ssl: true
+      
+    postgresql:
+      core_db:
+        host: "postgresql-dev.peoplespheres.local"
+        port: 5432
+        database: "core_db"
+        username: "${POSTGRES_DEV_USERNAME}"
+        password: "${POSTGRES_DEV_PASSWORD}"
+        ssl_mode: "require"
+      gateway:
+        host: "postgresql-gateway-dev.peoplespheres.local"
+        port: 5432
+        database: "gateway"
+        username: "${POSTGRES_GATEWAY_DEV_USERNAME}"
+        password: "${POSTGRES_GATEWAY_DEV_PASSWORD}"
+        ssl_mode: "require"
+      keycloak:
+        host: "postgresql-keycloak-dev.peoplespheres.local"
+        port: 5432
+        database: "keycloak"
+        username: "${POSTGRES_KEYCLOAK_DEV_USERNAME}"
+        password: "${POSTGRES_KEYCLOAK_DEV_PASSWORD}"
+        ssl_mode: "require"
+        
+    elasticsearch:
+      hosts:
+        - "https://elasticsearch-dev.peoplespheres.local:9200"
+      username: "${ES_DEV_USERNAME}"
+      password: "${ES_DEV_PASSWORD}"
+      
+    keycloak:
+      url: "https://keycloak-dev.peoplespheres.local:8443"
+      realm: "peoplespheres"
+      client_id: "${KEYCLOAK_CLIENT_ID}"
+      client_secret: "${KEYCLOAK_CLIENT_SECRET}"
+      
+    kong:
+      url: "https://kong-dev.peoplespheres.local:8080"
+      admin_url: "https://kong-admin-dev.peoplespheres.local:8001"
+      
+    memcached:
+      servers:
+        - "memcached-dev.peoplespheres.local:11211"
+        
+    sftp:
+      host: "sftp-dev.peoplespheres.local"
+      port: 2324
+      username: "${SFTP_DEV_USERNAME}"
+      password: "${SFTP_DEV_PASSWORD}"
+      
+    services:
+      pso-out-mapping:
+        namespace: "cfk-out"
+        service_name: "pso-out-mapping"
+        port: 8080
+      pso-out-scheduler:
+        namespace: "cfk-out"
+        service_name: "pso-out-scheduler"
+        port: 8080
+      pso-out-provider:
+        namespace: "cfk-out"
+        service_name: "pso-out-provider"
+        port: 8080
+      tracking-flow-service:
+        namespace: "cfk-shared"
+        service_name: "tracking-flow-service"
+        port: 8080
+        
+  qa:
+    kafka:
+      bootstrap_servers:
+        - "kafka-qa.peoplespheres.local:9092"
+      security_protocol: "SASL_SSL"
+      sasl_mechanism: "PLAIN"
+      sasl_username: "${KAFKA_QA_USERNAME}"
+      sasl_password: "${KAFKA_QA_PASSWORD}"
+      
+    rabbitmq:
+      host: "rabbitmq-qa.peoplespheres.local"
+      port: 5672
+      vhost: "/"
+      username: "${RABBITMQ_QA_USERNAME}"
+      password: "${RABBITMQ_QA_PASSWORD}"
+      ssl: true
+      
+    postgresql:
+      core_db:
+        host: "postgresql-qa.peoplespheres.local"
+        port: 5432
+        database: "core_db"
+        username: "${POSTGRES_QA_USERNAME}"
+        password: "${POSTGRES_QA_PASSWORD}"
+        ssl_mode: "require"
+        
+  pp:
+    kafka:
+      bootstrap_servers:
+        - "kafka-pp.peoplespheres.local:9092"
+      security_protocol: "SASL_SSL"
+      sasl_mechanism: "PLAIN"
+      sasl_username: "${KAFKA_PP_USERNAME}"
+      sasl_password: "${KAFKA_PP_PASSWORD}"
+      
+    rabbitmq:
+      host: "rabbitmq-pp.peoplespheres.local"
+      port: 5672
+      vhost: "/"
+      username: "${RABBITMQ_PP_USERNAME}"
+      password: "${RABBITMQ_PP_PASSWORD}"
+      ssl: true
+      
+  prod:
+    kafka:
+      bootstrap_servers:
+        - "kafka-prod.peoplespheres.local:9092"
+      security_protocol: "SASL_SSL"
+      sasl_mechanism: "PLAIN"
+      sasl_username: "${KAFKA_PROD_USERNAME}"
+      sasl_password: "${KAFKA_PROD_PASSWORD}"
+      
+    rabbitmq:
+      host: "rabbitmq-prod.peoplespheres.local"
+      port: 5672
+      vhost: "/"
+      username: "${RABBITMQ_PROD_USERNAME}"
+      password: "${RABBITMQ_PROD_PASSWORD}"
+      ssl: true
+
+test_settings:
+  timeout: 30
+  retry_attempts: 3
+  retry_delay: 5
+  parallel_execution: true
+  max_workers: 10
+  
+logging:
+  level: "INFO"
+  format: "json"
+  output_dir: "logs"
+  
+reporting:
+  output_dir: "reports"
+  formats:
+    - "html"
+    - "json"
+    - "junit"

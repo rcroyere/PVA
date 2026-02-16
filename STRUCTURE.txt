@@ -1,0 +1,77 @@
+pod-connectivity-tests/
+├── README.md                           # Documentation principale
+├── QUICKSTART.md                       # Guide de démarrage rapide
+├── ARCHITECTURE.md                     # Documentation architecture 3 layers
+├── FLUX_MAPPING.md                     # Guide mapping matrice → tests
+├── requirements.txt                    # Dépendances Python
+├── main.py                            # Point d'entrée principal
+├── models.py                          # Modèles de données (TestResult, etc.)
+├── Makefile                           # Commandes utilitaires
+├── Dockerfile                         # Image Docker
+├── docker-compose.yml                 # Orchestration Docker
+├── .gitlab-ci.yml                     # Pipeline CI/CD GitLab
+├── .gitignore                         # Fichiers à ignorer
+├── .env.example                       # Template variables d'environnement
+│
+├── config/
+│   └── environments.yaml              # Configuration multi-environnements (DEV/QA/PP/PROD)
+│
+├── handlers/                          # LAYER 1 - Orchestration
+│   ├── __init__.py
+│   ├── cli_handler.py                 # Handler CLI principal
+│   └── report_handler.py              # Génération rapports (HTML/JSON/JUnit)
+│
+├── usecases/                          # LAYER 2 - Logique métier
+│   ├── __init__.py
+│   ├── base_usecase.py                # Classe de base abstraite
+│   ├── pso_out_mapping_usecase.py     # Tests pso-out-mapping
+│   ├── pso_out_scheduler_usecase.py   # Tests pso-out-scheduler
+│   └── core_api_usecase.py            # Tests Core API
+│
+├── infrastructure/                    # LAYER 3 - Adapters
+│   ├── __init__.py
+│   ├── base_adapter.py                # Interface adapter de base
+│   ├── kafka_adapter.py               # Client Kafka (SASL/TLS)
+│   ├── rabbitmq_adapter.py            # Client RabbitMQ (AMQP/TLS)
+│   ├── postgresql_adapter.py          # Client PostgreSQL (mTLS)
+│   ├── http_adapter.py                # Client HTTP/HTTPS REST
+│   └── sftp_adapter.py                # Client SFTP/SSH
+│
+├── tests/                             # Tests unitaires
+│   └── test_adapters.py               # Tests des adapters
+│
+├── reports/                           # Rapports générés (créé à l'exécution)
+└── logs/                              # Logs d'exécution (créé à l'exécution)
+
+TOTAL: 30 fichiers créés
+
+ARCHITECTURE 3 LAYERS:
+┌──────────────────────────────────────────┐
+│  LAYER 1 - HANDLERS                      │
+│  • cli_handler.py                        │
+│  • report_handler.py                     │
+└──────────────┬───────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────────┐
+│  LAYER 2 - USE CASES                     │
+│  • pso_out_mapping_usecase.py            │
+│  • pso_out_scheduler_usecase.py          │
+│  • core_api_usecase.py                   │
+└──────────────┬───────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────────┐
+│  LAYER 3 - INFRASTRUCTURE                │
+│  • kafka_adapter.py                      │
+│  • rabbitmq_adapter.py                   │
+│  • postgresql_adapter.py                 │
+│  • http_adapter.py                       │
+│  • sftp_adapter.py                       │
+└──────────────────────────────────────────┘
+
+USAGE:
+  make install              # Installer dépendances
+  make run-dev              # Exécuter tests DEV
+  make run-service ENV=dev SERVICE=pso-out-mapping
+  python main.py --help     # Voir toutes les options
